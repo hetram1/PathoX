@@ -1,4 +1,7 @@
 from .core import (
+    MacenkoNormalizer,
+    StainAugmenter,
+    StainNormalizationResult,
     Tile,
     TileExtractor,
     TileScore,
@@ -12,6 +15,9 @@ from .core import (
 __version__ = "0.1.0"
 
 __all__ = [
+    "MacenkoNormalizer",
+    "StainAugmenter",
+    "StainNormalizationResult",
     "Tile",
     "TileExtractor",
     "TileScore",
