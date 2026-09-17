@@ -259,8 +259,11 @@ class SlideInferenceEngine:
             overlay[y0:y1, x0:x1] += value
             counts[y0:y1, x0:x1] += 1.0
 
-        counts[counts == 0] = 1
-        overlay /= counts
+        valid = counts > 0
+
+        counts_safe = counts.copy()
+        counts_safe[counts_safe == 0] = 1
+        overlay /= counts_safe
 
         norm = np.clip(
             overlay,
@@ -278,9 +281,25 @@ class SlideInferenceEngine:
             cv2.COLOR_BGR2RGB,
         )
 
-        fused = (
-            0.60 * canvas +
-            0.40 * heat
+        # Independently detect actual tissue in the thumbnail.
+        hsv = cv2.cvtColor(
+            canvas,
+            cv2.COLOR_RGB2HSV,
+        )
+
+        tissue_mask = (
+            (hsv[:, :, 1] > 18) &
+            (hsv[:, :, 2] < 250)
+        )
+
+        # Blend only where both a tile contributed AND tissue exists.
+        valid &= tissue_mask
+
+        fused = canvas.copy()
+
+        fused[valid] = (
+            0.60 * canvas[valid] +
+            0.40 * heat[valid]
         ).astype(np.uint8)
 
         result = Image.fromarray(fused)
