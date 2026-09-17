@@ -1,0 +1,3 @@
+/home/hetram/PathoX/cpp/pathox_native/build/CMakeFiles/pathox_native.dir
+/home/hetram/PathoX/cpp/pathox_native/build/CMakeFiles/edit_cache.dir
+/home/hetram/PathoX/cpp/pathox_native/build/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/hetram/PathoX/cpp/pathox_native/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

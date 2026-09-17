@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -shared -flto=auto -Wl,--dependency-file=CMakeFiles/pathox_native.dir/link.d  -o pathox_native.cpython-314-x86_64-linux-gnu.so CMakeFiles/pathox_native.dir/bindings.cpp.o  /usr/lib/gcc/x86_64-linux-gnu/15/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.a
