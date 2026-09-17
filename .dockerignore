@@ -1,0 +1,11 @@
+.git
+.venv
+__pycache__
+.pytest_cache
+cpp/**/build
+data
+models
+outputs
+*.pt
+*.pth
+*.onnx

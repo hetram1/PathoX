@@ -1,0 +1,15 @@
+numpy
+pandas
+pillow
+opencv-python-headless
+openslide-python
+openslide-bin
+scipy
+scikit-learn
+scikit-image
+pyyaml
+tqdm
+pybind11
+streamlit
+torch
+torchvision

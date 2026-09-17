@@ -1,0 +1,17 @@
+services:
+    pathox:
+        build: .
+        container_name: pathox
+        ports:
+            - "8501:8501"
+
+        gpus: all
+
+        volumes:
+            - /mnt/d/PathoXData:/mnt/d/PathoXData:ro
+            - ./outputs:/app/outputs
+
+        environment:
+            PYTHONPATH: /app/src
+
+        restart: unless-stopped
