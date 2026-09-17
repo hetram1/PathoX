@@ -20,3 +20,8 @@ outputs/*
 .vscode/
 .idea/
 .DS_Store
+
+# Native C++ build artifacts
+cpp/**/build/
+*.so
+*.pyd
