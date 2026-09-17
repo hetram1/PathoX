@@ -11,6 +11,7 @@ from .core import (
     WSIReader,
     WSIMetadata,
 )
+from .models import UNet
 
 __version__ = "0.1.0"
 
@@ -26,4 +27,5 @@ __all__ = [
     "TissueTileFilter",
     "WSIReader",
     "WSIMetadata",
+    "UNet",
 ]
