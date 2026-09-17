@@ -1,4 +1,5 @@
 from pathlib import Path
+import argparse
 import csv
 import json
 
@@ -84,8 +85,8 @@ def make_overlay(image, pred, target):
     return Image.fromarray(image)
 
 
-def save_prediction_examples(dataset, model, count=8):
-    example_dir = OUT / "examples"
+def save_prediction_examples(dataset, model, count=8, out_dir=OUT):
+    example_dir = out_dir / "examples"
     example_dir.mkdir(parents=True, exist_ok=True)
 
     loader = DataLoader(
@@ -133,7 +134,7 @@ def save_prediction_examples(dataset, model, count=8):
                 break
 
 
-def make_slide_heatmap(records, predictions):
+def make_slide_heatmap(records, predictions, out_dir=OUT):
     by_slide = {}
 
     for r, pred in zip(records, predictions):
@@ -147,7 +148,7 @@ def make_slide_heatmap(records, predictions):
             (x, y, score)
         )
 
-    heatmap_dir = OUT / "heatmaps"
+    heatmap_dir = out_dir / "heatmaps"
     heatmap_dir.mkdir(parents=True, exist_ok=True)
 
     for image_id, points in by_slide.items():
@@ -194,7 +195,30 @@ def make_slide_heatmap(records, predictions):
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Evaluate PathoX PANDA segmentation checkpoint"
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=Path,
+        default=CHECKPOINT,
+        help="Path to model checkpoint",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=OUT,
+        help="Directory for evaluation outputs",
+    )
+    args = parser.parse_args()
+
+    checkpoint_path = args.checkpoint
+    out_dir = args.output_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     print("Device:", DEVICE)
+    print("Checkpoint:", checkpoint_path)
+    print("Output dir:", out_dir)
 
     dataset = PANDASegmentationDataset(
         MANIFEST,
@@ -216,7 +240,7 @@ def main():
     ).to(DEVICE)
 
     checkpoint = torch.load(
-        CHECKPOINT,
+        checkpoint_path,
         map_location=DEVICE,
     )
 
@@ -256,7 +280,7 @@ def main():
 
     metrics = {
         "device": str(DEVICE),
-        "checkpoint": str(CHECKPOINT),
+        "checkpoint": str(checkpoint_path),
         "validation_tiles": len(dataset),
         "mean_dice": mean_dice,
         "mean_iou": mean_iou,
@@ -264,10 +288,10 @@ def main():
         "confusion_matrix": cm.tolist(),
     }
 
-    with (OUT / "metrics.json").open("w") as f:
+    with (out_dir / "metrics.json").open("w") as f:
         json.dump(metrics, f, indent=2)
 
-    with (OUT / "per_class_metrics.csv").open(
+    with (out_dir / "per_class_metrics.csv").open(
         "w",
         newline="",
     ) as f:
@@ -317,18 +341,20 @@ def main():
         dataset,
         model,
         count=8,
+        out_dir=out_dir,
     )
 
     make_slide_heatmap(
         records,
         predictions_for_heatmap,
+        out_dir=out_dir,
     )
 
     print("\nSaved:")
-    print(OUT / "metrics.json")
-    print(OUT / "per_class_metrics.csv")
-    print(OUT / "examples")
-    print(OUT / "heatmaps")
+    print(out_dir / "metrics.json")
+    print(out_dir / "per_class_metrics.csv")
+    print(out_dir / "examples")
+    print(out_dir / "heatmaps")
 
     print("\nPANDA MODEL EVALUATION: PASSED")
 

@@ -72,6 +72,7 @@ class CombinedSegmentationLoss(nn.Module):
     def __init__(
         self,
         dice_weight: float = 0.5,
+        class_weights: torch.Tensor | None = None,
     ) -> None:
         super().__init__()
 
@@ -80,8 +81,19 @@ class CombinedSegmentationLoss(nn.Module):
                 "dice_weight must be in [0, 1]"
             )
 
+        if class_weights is not None:
+            if class_weights.ndim != 1:
+                raise ValueError(
+                    "class_weights must be a 1D tensor"
+                )
+            self.register_buffer(
+                "class_weights",
+                class_weights.float(),
+            )
+        else:
+            self.class_weights = None
+
         self.dice_weight = dice_weight
-        self.cross_entropy = nn.CrossEntropyLoss()
         self.dice = DiceLoss()
 
     def forward(
@@ -89,9 +101,10 @@ class CombinedSegmentationLoss(nn.Module):
         logits: torch.Tensor,
         target: torch.Tensor,
     ) -> torch.Tensor:
-        ce = self.cross_entropy(
+        ce = torch.nn.functional.cross_entropy(
             logits,
             target,
+            weight=self.class_weights,
         )
 
         dice = self.dice(

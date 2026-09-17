@@ -1,11 +1,12 @@
 from pathlib import Path
 import json
 import time
-from collections import Counter
 
 import numpy as np
+import pandas as pd
 import torch
-from torch.utils.data import DataLoader, WeightedRandomSampler
+from torch.utils.data import DataLoader
+from PIL import Image
 
 from pathox.datasets.segmentation_dataset import PANDASegmentationDataset
 from pathox.models.unet import UNet
@@ -28,45 +29,38 @@ LR = 2e-4
 NUM_CLASSES = 6
 
 
-def build_class_balanced_sampler(dataset):
-    class_ids = [
-        int(record["target_class"])
-        for record in dataset.records
-    ]
+def compute_class_weights(dataset_manifest, num_classes=6):
+    manifest = pd.read_csv(dataset_manifest)
+    manifest = manifest[manifest["split"] == "train"]
 
-    counts = Counter(class_ids)
+    counts = np.zeros(num_classes, dtype=np.int64)
 
-    # Moderate oversampling: inverse square-root frequency.
-    sample_weights = [
-        1.0 / (counts[class_id] ** 0.5)
-        for class_id in class_ids
-    ]
+    for mask_path in manifest["mask_path"]:
+        mask = np.asarray(
+            Image.open(mask_path).convert("RGB")
+        )[:, :, 0]
 
-    weights = torch.tensor(
-        sample_weights,
-        dtype=torch.double,
+        counts += np.bincount(
+            mask.ravel(),
+            minlength=num_classes,
+        )
+
+    frequencies = counts / counts.sum()
+
+    median_frequency = np.median(
+        frequencies[frequencies > 0]
     )
 
-    generator = torch.Generator()
-    generator.manual_seed(42)
-
-    sampler = WeightedRandomSampler(
-        weights=weights,
-        num_samples=len(dataset),
-        replacement=True,
-        generator=generator,
+    weights = np.sqrt(
+        median_frequency / frequencies
     )
 
-    print("Training tile counts:", dict(sorted(counts.items())))
-    print(
-        "Sampling weights:",
-        {
-            cls: round(1.0 / (count ** 0.5), 4)
-            for cls, count in sorted(counts.items())
-        },
-    )
+    weights /= weights.mean()
 
-    return sampler
+    return torch.tensor(
+        weights,
+        dtype=torch.float32,
+    )
 
 
 def segmentation_metrics(pred, target, num_classes=6):
@@ -113,15 +107,10 @@ def main():
         augment=False,
     )
 
-    train_sampler = build_class_balanced_sampler(
-        train_ds
-    )
-
     train_loader = DataLoader(
         train_ds,
         batch_size=BATCH_SIZE,
-        sampler=train_sampler,
-        shuffle=False,
+        shuffle=True,
         num_workers=0,
         pin_memory=torch.cuda.is_available(),
     )
@@ -143,8 +132,19 @@ def main():
         base_channels=16,
     ).to(DEVICE)
 
+    class_weights = compute_class_weights(
+        MANIFEST,
+        NUM_CLASSES,
+    ).to(DEVICE)
+
+    print(
+        "Class weights:",
+        class_weights.detach().cpu().numpy(),
+    )
+
     criterion = CombinedSegmentationLoss(
         dice_weight=0.5,
+        class_weights=class_weights,
     )
 
     optimizer = torch.optim.AdamW(
@@ -269,19 +269,19 @@ def main():
 
             torch.save(
                 checkpoint,
-                CHECKPOINT_DIR / "pathox_panda_sampler_best.pt",
+                CHECKPOINT_DIR / "pathox_panda_weighted_best.pt",
             )
 
             print("  saved best checkpoint")
 
-    with (CHECKPOINT_DIR / "training_history_sampler.json").open("w") as f:
+    with (CHECKPOINT_DIR / "training_history_weighted.json").open("w") as f:
         json.dump(history, f, indent=2)
 
     print("\nTraining complete")
     print("Best validation Dice:", best_mean_dice)
     print(
         "Checkpoint:",
-        CHECKPOINT_DIR / "pathox_panda_best.pt",
+        CHECKPOINT_DIR / "pathox_panda_weighted_best.pt",
     )
 
 
