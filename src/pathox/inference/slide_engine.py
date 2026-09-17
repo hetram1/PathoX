@@ -7,7 +7,6 @@ import cv2
 import numpy as np
 import torch
 from PIL import Image, ImageDraw
-from torch.utils.data import DataLoader, TensorDataset
 
 import openslide
 
@@ -206,8 +205,8 @@ class SlideInferenceEngine:
 
         return entropy
 
-    @staticmethod
     def _save_heatmap(
+        self,
         values,
         records,
         slide,
@@ -241,14 +240,14 @@ class SlideInferenceEngine:
             x1 = max(
                 x0 + 1,
                 int(
-                    (record["x"] + self_tile_size)
+                    (record["x"] + self.tile_size)
                     * scale_x
                 ),
             )
             y1 = max(
                 y0 + 1,
                 int(
-                    (record["y"] + self_tile_size)
+                    (record["y"] + self.tile_size)
                     * scale_y
                 ),
             )
@@ -353,8 +352,6 @@ class SlideInferenceEngine:
             tissue.mean()
         )
 
-        tissue.save if False else None
-
         candidates = self._candidate_tiles(
             slide,
             tissue,
@@ -389,7 +386,7 @@ class SlideInferenceEngine:
                 non_blocking=True,
             )
 
-            with torch.no_grad():
+            with torch.inference_mode():
                 logits = self.model(batch)
                 probs = torch.softmax(
                     logits,
@@ -652,9 +649,6 @@ class SlideInferenceEngine:
                 )
 
         # Heatmaps.
-        global self_tile_size
-        self_tile_size = self.tile_size
-
         lesion_heatmap = output_dir / "lesion_heatmap.png"
         self._save_heatmap(
             lesion_fractions,
