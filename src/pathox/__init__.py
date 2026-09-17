@@ -1,3 +1,4 @@
+from .config import DataPaths
 from .core import (
     MacenkoNormalizer,
     StainAugmenter,
@@ -11,11 +12,14 @@ from .core import (
     WSIReader,
     WSIMetadata,
 )
-from .models import UNet
+from .models import CombinedSegmentationLoss, DiceLoss, UNet
 
 __version__ = "0.1.0"
 
 __all__ = [
+    "CombinedSegmentationLoss",
+    "DataPaths",
+    "DiceLoss",
     "MacenkoNormalizer",
     "StainAugmenter",
     "StainNormalizationResult",
@@ -25,7 +29,7 @@ __all__ = [
     "TissueDetectionResult",
     "TissueDetector",
     "TissueTileFilter",
+    "UNet",
     "WSIReader",
     "WSIMetadata",
-    "UNet",
 ]
