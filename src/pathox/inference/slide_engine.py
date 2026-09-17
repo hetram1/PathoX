@@ -12,6 +12,7 @@ import openslide
 
 from pathox.inference.uncertainty import UncertaintyAnalyzer
 from pathox.models.unet import UNet
+from pathox.native import score_tissue_tiles
 
 
 @dataclass
@@ -109,6 +110,36 @@ class SlideInferenceEngine:
         thumb_h, thumb_w = tissue_mask.shape
         slide_w, slide_h = slide.dimensions
 
+        # Prefer the native OpenMP path when available.
+        if score_tissue_tiles is not None:
+            native_mask = np.ascontiguousarray(
+                tissue_mask,
+                dtype=np.uint8,
+            )
+
+            scored = score_tissue_tiles(
+                native_mask,
+                slide_w,
+                slide_h,
+                self.tile_size,
+                self.stride,
+                self.tissue_threshold,
+            )
+
+            candidates = []
+
+            for row in scored:
+                candidates.append(
+                    {
+                        "x": int(row[0]),
+                        "y": int(row[1]),
+                        "tissue_fraction": float(row[2]),
+                    }
+                )
+
+            return candidates
+
+        # Portable Python fallback.
         scale_x = thumb_w / slide_w
         scale_y = thumb_h / slide_h
 
